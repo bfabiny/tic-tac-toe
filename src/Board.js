@@ -2,8 +2,10 @@ import React from 'react';
 
 
 function Square(props) {
+    const className = 'square' + (props.highlight ? ' highlight' : '');
+
     return (
-      <button className="square" onClick={props.onClick}>
+      <button className={className} onClick={props.onClick}>
         {props.value}
       </button>
     );
@@ -11,10 +13,13 @@ function Square(props) {
   
   class Board extends React.Component {
     renderSquare(i) {
+      const winningSquares = this.props.winningSquares;
+
       return (
         <Square 
           value={this.props.squares[i]}
           onClick={() => this.props.onClick(i)}
+          highlight={winningSquares && winningSquares.includes(i)}
         />
       );
     }

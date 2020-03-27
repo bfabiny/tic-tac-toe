@@ -1,6 +1,7 @@
 import React from 'react';
 import Board from './Board.js';
 import './index.css';
+import Axios from 'axios';
 
 class Game extends React.Component {
     constructor(props) {
@@ -13,12 +14,43 @@ class Game extends React.Component {
         xIsNext: true,
       };
     }
+
+    componentDidUpdate() {
+      const currentSquares = this.state.history[this.state.history.length - 1].squares;
+      const winInfo = calculateWinner(currentSquares);
+
+      // Computer player is 'O'
+      if (!this.state.xIsNext && !winInfo.winner)
+      {
+        const currentState = {
+          nextMove: "O",
+          currentBoard: currentSquares,
+        };
+
+        Axios.post(`https://localhost:44394/api/move`, currentState)
+          .then(res => {
+            console.log(res);
+            console.log(res.data);
+
+            const history = this.state.history.slice(0, this.state.stepNumber + 1);
+            
+            this.setState({
+              history: history.concat([{
+                squares: res.data,
+              }]),
+              stepNumber: history.length,
+              xIsNext: !this.state.xIsNext,
+            });
+          });
+      }
+    }
   
     handleClick(i) {
       const history = this.state.history.slice(0, this.state.stepNumber + 1);
       const current = history[history.length - 1];
       const squares = current.squares.slice();
-      if (calculateWinner(squares) || squares[i]) {
+
+      if (calculateWinner(squares).winner || squares[i]) {
         return;
       }
       
@@ -42,7 +74,7 @@ class Game extends React.Component {
     render() {
       const history = this.state.history;
       const current = history[this.state.stepNumber];
-      const winner = calculateWinner(current.squares);
+      const winInfo = calculateWinner(current.squares);
       
       const moves = history.map((step, move) => {
         const desc = move ?
@@ -56,8 +88,11 @@ class Game extends React.Component {
       });
   
       let status;
-      if (winner) {
-        status = 'Winner: ' + winner;
+      if (winInfo.winner) {
+        status = 'Winner: ' + winInfo.winner;
+      }
+      else if (winInfo.isDraw) {
+        status = 'Draw';
       }
       else {
         status = 'Next Player: ' + (this.state.xIsNext ? 'X' : 'O');
@@ -69,16 +104,18 @@ class Game extends React.Component {
             <Board 
               squares={current.squares}
               onClick={(i) => this.handleClick(i)}
+              winningSquares={winInfo.winningSquares}
             />
           </div>
           <div className="game-info">
             <div>{status}</div>
+            <div><button onClick={() => this.jumpTo(0)}>Restart Game</button></div>
             <ol>{moves}</ol>
           </div>
         </div>
       );
     }
-  }
+   }
 
   
 function calculateWinner(squares) {
@@ -96,10 +133,26 @@ function calculateWinner(squares) {
     for (let i = 0; i < lines.length; i++) {
       const [a, b, c] = lines[i];
       if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
-        return squares[a];
+        return {
+          winner: squares[a],
+          winningSquares: lines[i],
+          isDraw: false,
+        };
       }
     }
-    return null;
+
+    let isDraw = true;
+    for (let i = 0; i < squares.length; i++) {
+      if (!squares[i]) {
+        isDraw = false;
+        break;
+      }
+    }
+    return {
+      winner: null,
+      winningSquares: null,
+      isDraw: isDraw,
+    };
   }
 
   export default Game;
